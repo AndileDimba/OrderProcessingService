@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderProcessingService.Data;
-using OrderProcessingService.Models;
 using OrderProcessingService.DTOs;
+using OrderProcessingService.Models;
+using OrderProcessingService.Services;
+using Swashbuckle.AspNetCore.Filters;
 
 namespace OrderProcessingService.Controllers
 {
@@ -11,17 +13,35 @@ namespace OrderProcessingService.Controllers
     public class OrderController : ControllerBase
     {
         private readonly OrderProcessingContext _context;
+        private readonly OrderService _orderService;
 
-        public OrderController(OrderProcessingContext context)
+        public OrderController(OrderProcessingContext context, OrderService orderService)
         {
             _context = context;
+            _orderService = orderService;
         }
 
         [HttpPost]
+        [SwaggerRequestExample(typeof(Order), typeof(OrderExample))]
         public async Task<IActionResult> CreateOrder([FromBody] Order order)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // Custom validation
+            if (order.Items == null || !order.Items.Any())
+                return BadRequest("Order must contain at least one item.");
+
+            if (order.Items.Any(i => i.Quantity <= 0 || i.UnitPrice <= 0))
+                return BadRequest("Each item must have a positive quantity and unit price.");
+
+            var calculatedTotal = order.Items.Sum(i => i.Quantity * i.UnitPrice);
+            if (order.TotalAmount != calculatedTotal)
+                return BadRequest($"TotalAmount ({order.TotalAmount}) does not match sum of items ({calculatedTotal}).");
+
+            var (success, errorMessage) = await _orderService.ValidateAndReserveInventoryAsync(order);
+            if (!success)
+                return BadRequest(errorMessage);
 
             order.Id = Guid.NewGuid();
             order.CreatedAt = DateTime.UtcNow;

@@ -23,7 +23,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var context = GetDbContext();
-            var controller = new OrderController(context);
+            var orderService = new Services.OrderService(context);
+            var controller = new OrderController(context, orderService);
             var order = new Order
             {
                 CustomerId = "customer1",
