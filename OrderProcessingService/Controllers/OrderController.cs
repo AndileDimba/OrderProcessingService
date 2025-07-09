@@ -22,7 +22,7 @@ namespace OrderProcessingService.Controllers
         }
 
         [HttpPost]
-        //[SwaggerRequestExample(typeof(Order), typeof(OrderExample))]
+        [SwaggerRequestExample(typeof(Order), typeof(OrderExample))]
         public async Task<IActionResult> CreateOrder([FromBody] Order order)
         {
             if (!ModelState.IsValid)
