@@ -38,6 +38,7 @@ namespace OrderProcessingService.Controllers
             var calculatedTotal = order.Items.Sum(i => i.Quantity * i.UnitPrice);
             if (order.TotalAmount != calculatedTotal)
                 return BadRequest($"TotalAmount ({order.TotalAmount}) does not match sum of items ({calculatedTotal}).");
+            
 
             var (success, errorMessage) = await _orderService.ValidateAndReserveInventoryAsync(order);
             if (!success)

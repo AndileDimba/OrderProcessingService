@@ -25,12 +25,13 @@ namespace OrderProcessingService.Controllers
             if (item == null)
                 return NotFound(new { error = $"Product {productId} not found in inventory." });
 
-            return Ok(new
+            var result = new ProductAvailability
             {
-                productId = item.ProductId,
-                availableQuantity = item.AvailableQuantity,
-                reservedQuantity = item.ReservedQuantity
-            });
+                ProductId = item.ProductId,
+                AvailableQuantity = item.AvailableQuantity,
+                ReservedQuantity = item.ReservedQuantity
+            };
+            return Ok(result);
         }
 
         // POST /api/inventory/{productId}/reserve - Reserve items
@@ -51,12 +52,13 @@ namespace OrderProcessingService.Controllers
             item.ReservedQuantity += request.Quantity;
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            var result = new ProductAvailability
             {
-                productId = item.ProductId,
-                availableQuantity = item.AvailableQuantity,
-                reservedQuantity = item.ReservedQuantity
-            });
+                ProductId = item.ProductId,
+                AvailableQuantity = item.AvailableQuantity,
+                ReservedQuantity = item.ReservedQuantity
+            };
+            return Ok(result);
         }
 
         // POST /api/inventory/{productId}/release - Release reserved items
@@ -77,12 +79,13 @@ namespace OrderProcessingService.Controllers
             item.AvailableQuantity += request.Quantity;
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            var result = new ProductAvailability
             {
-                productId = item.ProductId,
-                availableQuantity = item.AvailableQuantity,
-                reservedQuantity = item.ReservedQuantity
-            });
+                ProductId = item.ProductId,
+                AvailableQuantity = item.AvailableQuantity,
+                ReservedQuantity = item.ReservedQuantity
+            };
+            return Ok(result);
         }
     }
 

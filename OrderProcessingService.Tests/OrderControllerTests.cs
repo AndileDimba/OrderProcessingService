@@ -1,28 +1,41 @@
-﻿using Xunit;
-using Microsoft.AspNetCore.Mvc;
-using OrderProcessingService.Controllers;
-using OrderProcessingService.Models;
-using OrderProcessingService.Data;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OrderProcessingService.Controllers;
+using OrderProcessingService.Data;
+using OrderProcessingService.Models;
 using System.Threading.Tasks;
+using System.Xml.Linq;
+using Xunit;
 
 namespace OrderProcessingService.Tests
 {
     public class OrderControllerTests
     {
-        private OrderProcessingContext GetDbContext()
+        private OrderProcessingContext GetDbContext(string dbName)
         {
             var options = new DbContextOptionsBuilder<OrderProcessingContext>()
-                .UseInMemoryDatabase(databaseName: "TestDb")
+                .UseInMemoryDatabase(databaseName: dbName)
                 .Options;
-            return new OrderProcessingContext(options);
+
+            var context = new OrderProcessingContext(options);
+
+            // Seed inventory
+            context.InventoryItems.Add(new InventoryItem
+            {
+                ProductId = "PROD001",
+                AvailableQuantity = 10,
+                ReservedQuantity = 0
+            });
+
+            context.SaveChanges();
+            return context;
         }
 
         [Fact]
         public async Task CreateOrder_ReturnsCreatedAtActionResult()
         {
             // Arrange
-            var context = GetDbContext();
+            var context = GetDbContext(Guid.NewGuid().ToString());
             var orderService = new Services.OrderService(context);
             var controller = new OrderController(context, orderService);
             var order = new Order
