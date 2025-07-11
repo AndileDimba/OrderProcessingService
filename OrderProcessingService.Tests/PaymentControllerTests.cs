@@ -1,91 +1,83 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Moq;
 using OrderProcessingService.Controllers;
-using OrderProcessingService.Data;
 using OrderProcessingService.Models;
+using OrderProcessingService.Repository;
+using Xunit;
 
 namespace OrderProcessingService.Tests
 {
     public class PaymentControllerTests
     {
-        private OrderProcessingContext GetDbContext(string dbName)
-        {
-            var options = new DbContextOptionsBuilder<OrderProcessingContext>()
-                .UseInMemoryDatabase(databaseName: dbName)
-                .Options;
-
-            var context = new OrderProcessingContext(options);
-            return context;
-        }
-
         [Fact]
         public async Task ProcessPayment_ReturnsSuccess()
         {
             // Arrange
-            var context = GetDbContext(Guid.NewGuid().ToString());
-            var orderId = Guid.NewGuid(); // Generate a consistent OrderId
-
-            // Seed the database with an order
-            context.Orders.Add(new Order
-            {
-                Id = orderId, // Use the same OrderId here
-                CustomerId = "customer1",
-                TotalAmount = 100.0m
-            });
-            context.SaveChanges();
-
-            var controller = new PaymentController(context);
+            var mockPaymentService = new Mock<IPaymentService>();
             var request = new PaymentRequest
             {
-                OrderId = orderId, // Use the same OrderId here
-                Amount = 100.0m, // Matches the TotalAmount of the seeded order
+                OrderId = Guid.NewGuid(),
+                Amount = 100.0m,
                 PaymentMethod = "CreditCard"
             };
+
+            var response = new PaymentResponse
+            {
+                TransactionId = Guid.NewGuid(),
+                Status = "Completed",
+                Message = "Payment processed successfully."
+            };
+
+            mockPaymentService
+                .Setup(service => service.ProcessPaymentAsync(request))
+                .ReturnsAsync((response, true));
+
+            var controller = new PaymentController(mockPaymentService.Object);
 
             // Act
             var result = await controller.ProcessPayment(request);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<PaymentResponse>(okResult.Value);
-            Assert.Equal("Completed", response.Status);
-            Assert.NotEqual(Guid.Empty, response.TransactionId);
+            var actualResponse = Assert.IsType<PaymentResponse>(okResult.Value);
+            Assert.Equal("Completed", actualResponse.Status);
+            Assert.NotEqual(Guid.Empty, actualResponse.TransactionId);
         }
 
         [Fact]
         public async Task GetPaymentStatus_ReturnsPaymentDetails()
         {
             // Arrange
-            var context = GetDbContext(Guid.NewGuid().ToString());
+            var mockPaymentService = new Mock<IPaymentService>();
             var transactionId = Guid.NewGuid();
-            context.PaymentTransactions.Add(new PaymentTransaction
+            var response = new PaymentResponse
             {
                 TransactionId = transactionId,
-                OrderId = Guid.NewGuid().ToString(),
-                Amount = 100.0m,
-                Status = PaymentStatus.Completed,
-                ProcessedAt = DateTime.UtcNow
-            });
-            context.SaveChanges();
+                Status = "Completed",
+                Message = "Payment status retrieved successfully."
+            };
 
-            var controller = new PaymentController(context);
+            mockPaymentService
+                .Setup(service => service.GetPaymentStatusAsync(transactionId))
+                .ReturnsAsync(response);
+
+            var controller = new PaymentController(mockPaymentService.Object);
 
             // Act
             var result = await controller.GetPaymentStatus(transactionId);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<PaymentResponse>(okResult.Value);
-            Assert.Equal(transactionId, response.TransactionId);
-            Assert.Equal("Completed", response.Status);
+            var actualResponse = Assert.IsType<PaymentResponse>(okResult.Value);
+            Assert.Equal(transactionId, actualResponse.TransactionId);
+            Assert.Equal("Completed", actualResponse.Status);
         }
 
         [Fact]
         public async Task ProcessPayment_ReturnsBadRequest_WhenOrderIdIsInvalid()
         {
             // Arrange
-            var context = GetDbContext(Guid.NewGuid().ToString());
-            var controller = new PaymentController(context);
+            var mockPaymentService = new Mock<IPaymentService>();
             var request = new PaymentRequest
             {
                 OrderId = Guid.NewGuid(), // Non-existent OrderId
@@ -93,52 +85,82 @@ namespace OrderProcessingService.Tests
                 PaymentMethod = "CreditCard"
             };
 
+            var response = new PaymentResponse
+            {
+                Status = "Failed",
+                Message = "Order with ID does not exist."
+            };
+
+            mockPaymentService
+                .Setup(service => service.ProcessPaymentAsync(request))
+                .ReturnsAsync((response, false));
+
+            var controller = new PaymentController(mockPaymentService.Object);
+
             // Act
             var result = await controller.ProcessPayment(request);
 
             // Assert
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            var valueString = badRequest.Value?.ToString() ?? string.Empty;
-            Assert.Contains("does not exist", valueString);
+            var actualResponse = Assert.IsType<PaymentResponse>(badRequest.Value);
+            Assert.Equal("Failed", actualResponse.Status);
+            Assert.Contains("does not exist", actualResponse.Message);
         }
 
         [Fact]
         public async Task ProcessPayment_CanSimulateFailure()
         {
             // Arrange
-            var context = GetDbContext(Guid.NewGuid().ToString());
-            var orderId = Guid.NewGuid();
-            context.Orders.Add(new Order
-            {
-                Id = orderId,
-                CustomerId = "customer1",
-                TotalAmount = 100.0m
-            });
-            context.SaveChanges();
-
-            var controller = new PaymentController(context);
+            var mockPaymentService = new Mock<IPaymentService>();
             var request = new PaymentRequest
             {
-                OrderId = orderId,
+                OrderId = Guid.NewGuid(),
                 Amount = 100.0m,
                 PaymentMethod = "CreditCard"
             };
+
+            var response = new PaymentResponse
+            {
+                TransactionId = Guid.NewGuid(),
+                Status = "Failed",
+                Message = "Payment failed. Please try again."
+            };
+
+            mockPaymentService
+                .Setup(service => service.ProcessPaymentAsync(request))
+                .ReturnsAsync((response, false));
+
+            var controller = new PaymentController(mockPaymentService.Object);
 
             // Act
             var result = await controller.ProcessPayment(request);
 
             // Assert
-            if (result is BadRequestObjectResult badRequest)
-            {
-                var response = Assert.IsType<PaymentResponse>(badRequest.Value);
-                Assert.Equal("Failed", response.Status);
-            }
-            else
-            {
-                var okResult = Assert.IsType<OkObjectResult>(result);
-                var response = Assert.IsType<PaymentResponse>(okResult.Value);
-                Assert.Equal("Completed", response.Status);
-            }
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var actualResponse = Assert.IsType<PaymentResponse>(badRequest.Value);
+            Assert.Equal("Failed", actualResponse.Status);
+            Assert.Contains("Payment failed", actualResponse.Message);
+        }
+
+        [Fact]
+        public async Task GetPaymentStatus_ReturnsNotFound_WhenTransactionDoesNotExist()
+        {
+            // Arrange
+            var mockPaymentService = new Mock<IPaymentService>();
+            var transactionId = Guid.NewGuid();
+
+            mockPaymentService
+                .Setup(service => service.GetPaymentStatusAsync(transactionId))
+                .ReturnsAsync((PaymentResponse?)null);
+
+            var controller = new PaymentController(mockPaymentService.Object);
+
+            // Act
+            var result = await controller.GetPaymentStatus(transactionId);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Contains("Payment transaction not found", notFoundResult.Value.ToString());
         }
     }
 }

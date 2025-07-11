@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OrderProcessingService.Data;
+using OrderProcessingService.Repository;
 using OrderProcessingService.Services;
 using Swashbuckle.AspNetCore.Filters;
 
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // Add Entity Framework with In-Memory database
 builder.Services.AddDbContext<OrderProcessingContext>(options =>
