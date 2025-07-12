@@ -39,7 +39,7 @@ namespace OrderProcessingService.Models
     public enum OrderStatus
     {
         Pending,
-        Confirmed,
+        Completed,
         Cancelled,
         Shipped
     }
