@@ -160,6 +160,8 @@ namespace OrderProcessingService.Tests
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.NotNull(notFoundResult.Value);
+
             Assert.Contains("Payment transaction not found", notFoundResult.Value.ToString());
         }
     }

@@ -11,6 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 // Add Entity Framework with In-Memory database
 builder.Services.AddDbContext<OrderProcessingContext>(options =>
