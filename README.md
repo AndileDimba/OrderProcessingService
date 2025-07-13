@@ -23,6 +23,53 @@ This project is built with **ASP.NET Core** and uses an **in-memory database** f
 
 - **In-Memory Database**:
   - Lightweight database for testing and development.
+ 
+ ## Caching
+
+### Overview
+The application uses **in-memory caching** to improve performance and reduce database queries for frequently accessed data. Caching is implemented using the `IMemoryCache` service provided by ASP.NET Core.
+
+### What is Cached?
+1. **Inventory Availability**:
+   - The availability of products in the inventory is cached when retrieved using the `GetProductAvailabilityAsync` method.
+   - Cached data includes:
+     - `ProductId`
+     - `AvailableQuantity`
+     - `ReservedQuantity`
+  
+3. **Payment Statuses**:
+   - The Status of transaction is cached when retrieved using `GetPaymentStatusAsync` method.
+   - Cached data includes:
+      - `TransactionId`
+      - `response`
+
+2. **Cache Expiry**:
+   - Cached inventory data expires after **5 minutes** to ensure consistency with the database.
+  
+     
+### How Caching Works
+1. **Cache Hit**:
+   - If the requested data is already in the cache, it is returned directly without querying the database.
+
+2. **Cache Miss**:
+   - If the requested data is not in the cache, the database is queried, and the result is cached for future use.
+
+3. **Cache Update**:
+   - When inventory data is modified (e.g., items are reserved), the cache is updated to reflect the new state.
+
+### Benefits of Caching
+- **Improved Performance**:
+  - Reduces the number of database queries for frequently accessed data.
+- **Faster Response Times**:
+  - Cached data is returned almost instantly, improving the user experience.
+- **Scalability**:
+  - Reduces database load, making the application more scalable.
+
+### Future Improvements
+- **Distributed Caching**:
+  - For multi-instance deployments, consider using a distributed caching solution like **Redis** or **SQL Server caching**.
+- **Custom Cache Expiry**:
+  - Implement dynamic cache expiry based on the frequency of data changes.
 
 ## Technologies Used
 
