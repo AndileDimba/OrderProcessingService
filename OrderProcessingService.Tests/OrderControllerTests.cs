@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using OrderProcessingService.Controllers;
 using OrderProcessingService.Data;
@@ -39,6 +40,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var order = new Order
             {
                 Items = new List<OrderItem>
@@ -62,7 +65,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.CreateOrderAsync(It.Is<Order>(o => o == order)))
                 .ReturnsAsync((true, null, createdOrder));
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.CreateOrder(order);
@@ -89,6 +92,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var orderId = Guid.NewGuid();
             var order = new Order
             {
@@ -107,7 +112,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.GetOrderByIdAsync(orderId))
                 .ReturnsAsync(order);
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetOrderById(orderId);
@@ -123,13 +128,15 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var orderId = Guid.NewGuid();
 
             mockOrderService
                 .Setup(service => service.GetOrderByIdAsync(orderId))
                 .ReturnsAsync((Order?)null);
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetOrderById(orderId);
@@ -143,6 +150,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var orders = new List<Order>
     {
         new Order
@@ -163,7 +172,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.GetOrdersAsync(1, 10))
                 .ReturnsAsync(orders);
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetOrders(1, 10);
@@ -180,6 +189,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var orderId = Guid.NewGuid();
             var request = new UpdateOrderStatusRequest { Status = "Completed" };
 
@@ -187,7 +198,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.UpdateOrderStatusAsync(orderId, OrderStatus.Completed))
                 .ReturnsAsync(true);
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.UpdateOrderStatus(orderId, request);
@@ -203,6 +214,7 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
             var orderId = Guid.NewGuid();
             var request = new UpdateOrderStatusRequest { Status = "Completed" };
 
@@ -210,7 +222,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.UpdateOrderStatusAsync(orderId, OrderStatus.Completed))
                 .ReturnsAsync(false);
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.UpdateOrderStatus(orderId, request);
@@ -226,10 +238,12 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockOrderService = new Mock<IOrderService>();
+            var mockLogger = new Mock<ILogger<OrderController>>();
+
             var orderId = Guid.NewGuid();
             var request = new UpdateOrderStatusRequest { Status = "InvalidStatus" };
 
-            var controller = new OrderController(mockOrderService.Object);
+            var controller = new OrderController(mockOrderService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.UpdateOrderStatus(orderId, request);

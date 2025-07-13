@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using OrderProcessingService.Controllers;
 using OrderProcessingService.DTOs;
@@ -16,6 +17,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD001";
             var response = new ProductAvailability
             {
@@ -28,7 +31,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.GetProductAvailabilityAsync(productId))
                 .ReturnsAsync(response);
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetProductAvailability(productId);
@@ -46,13 +49,15 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD999";
 
             mockInventoryService
                 .Setup(service => service.GetProductAvailabilityAsync(productId))
                 .ReturnsAsync((ProductAvailability?)null);
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetProductAvailability(productId);
@@ -66,6 +71,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD001";
             var request = new ReserveInventoryRequest { Quantity = 5 };
             var response = new ProductAvailability
@@ -79,7 +86,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ReserveItemsAsync(productId, request.Quantity))
                 .ReturnsAsync((true, null, response));
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ReserveItems(productId, request);
@@ -96,6 +103,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD001";
             var request = new ReserveInventoryRequest { Quantity = 20 };
 
@@ -103,7 +112,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ReserveItemsAsync(productId, request.Quantity))
                 .ReturnsAsync((false, "Insufficient available quantity.", null));
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ReserveItems(productId, request);
@@ -122,6 +131,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD001";
             var request = new ReleaseInventoryRequest { Quantity = 3 };
             var response = new ProductAvailability
@@ -135,7 +146,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ReleaseItemsAsync(productId, request.Quantity))
                 .ReturnsAsync((true, null, response));
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ReleaseItems(productId, request);
@@ -152,6 +163,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockInventoryService = new Mock<IInventoryService>();
+            var mockLogger = new Mock<ILogger<InventoryController>>();
+
             var productId = "PROD001";
             var request = new ReleaseInventoryRequest { Quantity = 10 };
 
@@ -159,7 +172,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ReleaseItemsAsync(productId, request.Quantity))
                 .ReturnsAsync((false, "Insufficient reserved quantity to release.", null));
 
-            var controller = new InventoryController(mockInventoryService.Object);
+            var controller = new InventoryController(mockInventoryService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ReleaseItems(productId, request);

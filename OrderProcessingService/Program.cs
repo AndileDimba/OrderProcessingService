@@ -25,6 +25,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 builder.Services.AddSwaggerExamplesFromAssemblyOf<Program>();
 
+// Configure logging
+builder.Logging.ClearProviders(); // Optional: Clear default providers
+builder.Logging.AddConsole();    // Add console logging
+builder.Logging.AddDebug();      // Add debug logging
+
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
