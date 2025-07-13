@@ -44,7 +44,7 @@ This project is built with **ASP.NET Core** and uses an **in-memory database** f
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/OrderProcessingService.git
+   git clone https://github.com/AndileDimba/OrderProcessingService.git
    cd OrderProcessingService
 Restore dependencies:
 bash
