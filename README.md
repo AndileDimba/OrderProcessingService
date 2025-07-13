@@ -53,7 +53,7 @@ Run the application:
 bash
 dotnet run
 Access the API documentation:
-Open your browser and navigate to https://localhost:5001/swagger (or the port your app is running on).
+Open your browser and navigate to https://localhost:7024/swagger (or the port your app is running on).
 
 ## API Endpoints
 
