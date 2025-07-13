@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using OrderProcessingService.Data;
 using OrderProcessingService.DTOs;
 using OrderProcessingService.Repository;
@@ -8,11 +9,13 @@ namespace OrderProcessingService.Services
     public class InventoryService : IInventoryService
     {
         private readonly OrderProcessingContext _context;
+        private readonly IMemoryCache _cache;
         private readonly ILogger<InventoryService> _logger;
 
-        public InventoryService(OrderProcessingContext context, ILogger<InventoryService> logger)
+        public InventoryService(OrderProcessingContext context, IMemoryCache cache, ILogger<InventoryService> logger)
         {
             _context = context;
+            _cache = cache;
             _logger = logger;
         }
 
@@ -20,6 +23,16 @@ namespace OrderProcessingService.Services
         {
             _logger.LogInformation("GetProductAvailabilityAsync called for ProductId: {ProductId}", productId);
 
+            // Check if the product availability is already cached
+            if (_cache.TryGetValue(productId, out ProductAvailability? cachedAvailability))
+            {
+                _logger.LogInformation("Cache hit for ProductId: {ProductId}", productId);
+                return cachedAvailability;
+            }
+
+            _logger.LogInformation("Cache miss for ProductId: {ProductId}. Querying database...", productId);
+
+            // Query the database if not cached
             var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.ProductId == productId);
             if (item == null)
             {
@@ -27,13 +40,18 @@ namespace OrderProcessingService.Services
                 return null;
             }
 
-            _logger.LogInformation("Product availability retrieved for ProductId: {ProductId}", productId);
-            return new ProductAvailability
+            var availability = new ProductAvailability
             {
                 ProductId = item.ProductId,
                 AvailableQuantity = item.AvailableQuantity,
                 ReservedQuantity = item.ReservedQuantity
             };
+
+            // Cache the result for 5 minutes
+            _cache.Set(productId, availability, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("Cached availability for ProductId: {ProductId}", productId);
+
+            return availability;
         }
 
         public async Task<(bool IsSuccess, string? ErrorMessage, ProductAvailability? Result)> ReserveItemsAsync(string productId, int quantity)
@@ -64,13 +82,17 @@ namespace OrderProcessingService.Services
             item.ReservedQuantity += quantity;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Items reserved successfully for ProductId: {ProductId} with Quantity: {Quantity}", productId, quantity);
-            return (true, null, new ProductAvailability
+            
+            var updatedAvailability =  new ProductAvailability
             {
                 ProductId = item.ProductId,
                 AvailableQuantity = item.AvailableQuantity,
                 ReservedQuantity = item.ReservedQuantity
-            });
+            };
+
+            _cache.Set(productId, updatedAvailability, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("Updated cache for ProductId: {ProductId} after reserving items", productId);
+            return (true, null, updatedAvailability);
         }
 
         public async Task<(bool IsSuccess, string? ErrorMessage, ProductAvailability? Result)> ReleaseItemsAsync(string productId, int quantity)
