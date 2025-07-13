@@ -2,15 +2,19 @@
 using OrderProcessingService.Models;
 using OrderProcessingService.Repository;
 using Microsoft.EntityFrameworkCore;
+using OrderProcessingService.DTOs;
+using Microsoft.Extensions.Options;
 
 public class PaymentService : IPaymentService
 {
     private readonly OrderProcessingContext _context;
+    private readonly PaymentSettings _paymentSettings;
     private readonly ILogger<PaymentService> _logger;
 
-    public PaymentService(OrderProcessingContext context, ILogger<PaymentService> logger)
+    public PaymentService(OrderProcessingContext context, IOptions<PaymentSettings> paymentSettings, ILogger<PaymentService> logger)
     {
         _context = context;
+        _paymentSettings = paymentSettings.Value;
         _logger = logger;
     }
 
@@ -20,14 +24,13 @@ public class PaymentService : IPaymentService
             request.OrderId, request.Amount, request.PaymentMethod);
 
         // Validate PaymentMethod
-        var validPaymentMethods = new List<string> { "CreditCard", "PayPal", "BankTransfer" };
-        if (!validPaymentMethods.Contains(request.PaymentMethod))
+        if (!_paymentSettings.AllowedMethods.Contains(request.PaymentMethod))
         {
             _logger.LogWarning("Invalid payment method: {PaymentMethod} for OrderId: {OrderId}", request.PaymentMethod, request.OrderId);
             return (new PaymentResponse
             {
                 Status = PaymentStatus.Failed.ToString(),
-                Message = $"Invalid payment method: {request.PaymentMethod}. Allowed methods are: {string.Join(", ", validPaymentMethods)}."
+                Message = $"Invalid payment method: {request.PaymentMethod}. Allowed methods are: {string.Join(", ", _paymentSettings.AllowedMethods)}."
             }, false);
         }
 

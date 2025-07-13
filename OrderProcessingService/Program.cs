@@ -3,6 +3,7 @@ using OrderProcessingService.Data;
 using OrderProcessingService.Repository;
 using OrderProcessingService.Services;
 using Swashbuckle.AspNetCore.Filters;
+using OrderProcessingService.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,14 @@ builder.Services.AddSwaggerExamplesFromAssemblyOf<Program>();
 builder.Logging.ClearProviders(); // Optional: Clear default providers
 builder.Logging.AddConsole();    // Add console logging
 builder.Logging.AddDebug();      // Add debug logging
+
+// Load environment-specific settings
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
+// Register strongly-typed configuration
+builder.Services.Configure<PaymentSettings>(builder.Configuration.GetSection("PaymentSettings"));
 
 var app = builder.Build();
 app.UseSwagger();
