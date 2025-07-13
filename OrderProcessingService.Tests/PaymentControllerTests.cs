@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Microsoft.Extensions.Logging;
 using OrderProcessingService.Controllers;
 using OrderProcessingService.Models;
 using OrderProcessingService.Repository;
@@ -14,6 +15,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockPaymentService = new Mock<IPaymentService>();
+            var mockLogger = new Mock<ILogger<PaymentController>>();
+
             var request = new PaymentRequest
             {
                 OrderId = Guid.NewGuid(),
@@ -32,7 +35,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ProcessPaymentAsync(request))
                 .ReturnsAsync((response, true));
 
-            var controller = new PaymentController(mockPaymentService.Object);
+            var controller = new PaymentController(mockPaymentService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ProcessPayment(request);
@@ -49,6 +52,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockPaymentService = new Mock<IPaymentService>();
+            var mockLogger = new Mock<ILogger<PaymentController>>();
+
             var transactionId = Guid.NewGuid();
             var response = new PaymentResponse
             {
@@ -61,7 +66,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.GetPaymentStatusAsync(transactionId))
                 .ReturnsAsync(response);
 
-            var controller = new PaymentController(mockPaymentService.Object);
+            var controller = new PaymentController(mockPaymentService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetPaymentStatus(transactionId);
@@ -78,6 +83,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockPaymentService = new Mock<IPaymentService>();
+            var mockLogger = new Mock<ILogger<PaymentController>>();
+
             var request = new PaymentRequest
             {
                 OrderId = Guid.NewGuid(), // Non-existent OrderId
@@ -95,7 +102,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ProcessPaymentAsync(request))
                 .ReturnsAsync((response, false));
 
-            var controller = new PaymentController(mockPaymentService.Object);
+            var controller = new PaymentController(mockPaymentService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ProcessPayment(request);
@@ -112,6 +119,8 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockPaymentService = new Mock<IPaymentService>();
+            var mockLogger = new Mock<ILogger<PaymentController>>();
+
             var request = new PaymentRequest
             {
                 OrderId = Guid.NewGuid(),
@@ -130,7 +139,7 @@ namespace OrderProcessingService.Tests
                 .Setup(service => service.ProcessPaymentAsync(request))
                 .ReturnsAsync((response, false));
 
-            var controller = new PaymentController(mockPaymentService.Object);
+            var controller = new PaymentController(mockPaymentService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.ProcessPayment(request);
@@ -147,13 +156,15 @@ namespace OrderProcessingService.Tests
         {
             // Arrange
             var mockPaymentService = new Mock<IPaymentService>();
+            var mockLogger = new Mock<ILogger<PaymentController>>();
+
             var transactionId = Guid.NewGuid();
 
             mockPaymentService
                 .Setup(service => service.GetPaymentStatusAsync(transactionId))
                 .ReturnsAsync((PaymentResponse?)null);
 
-            var controller = new PaymentController(mockPaymentService.Object);
+            var controller = new PaymentController(mockPaymentService.Object, mockLogger.Object);
 
             // Act
             var result = await controller.GetPaymentStatus(transactionId);

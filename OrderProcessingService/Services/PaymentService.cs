@@ -6,18 +6,36 @@ using Microsoft.EntityFrameworkCore;
 public class PaymentService : IPaymentService
 {
     private readonly OrderProcessingContext _context;
+    private readonly ILogger<PaymentService> _logger;
 
-    public PaymentService(OrderProcessingContext context)
+    public PaymentService(OrderProcessingContext context, ILogger<PaymentService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<(PaymentResponse Response, bool IsSuccess)> ProcessPaymentAsync(PaymentRequest request)
     {
+        _logger.LogInformation("ProcessPaymentAsync called for OrderId: {OrderId} with Amount: {Amount} and PaymentMethod: {PaymentMethod}",
+            request.OrderId, request.Amount, request.PaymentMethod);
+
+        // Validate PaymentMethod
+        var validPaymentMethods = new List<string> { "CreditCard", "PayPal", "BankTransfer" };
+        if (!validPaymentMethods.Contains(request.PaymentMethod))
+        {
+            _logger.LogWarning("Invalid payment method: {PaymentMethod} for OrderId: {OrderId}", request.PaymentMethod, request.OrderId);
+            return (new PaymentResponse
+            {
+                Status = PaymentStatus.Failed.ToString(),
+                Message = $"Invalid payment method: {request.PaymentMethod}. Allowed methods are: {string.Join(", ", validPaymentMethods)}."
+            }, false);
+        }
+
         // Validate OrderId
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == request.OrderId);
         if (order == null)
         {
+            _logger.LogWarning("Order not found for OrderId: {OrderId}", request.OrderId);
             return (new PaymentResponse
             {
                 Status = PaymentStatus.Failed.ToString(),
@@ -28,6 +46,8 @@ public class PaymentService : IPaymentService
         // Validate Amount
         if (order.TotalAmount != request.Amount)
         {
+            _logger.LogWarning("Payment amount mismatch for OrderId: {OrderId}. Expected: {ExpectedAmount}, Actual: {ActualAmount}",
+                request.OrderId, order.TotalAmount, request.Amount);
             return (new PaymentResponse
             {
                 Status = PaymentStatus.Failed.ToString(),
@@ -53,6 +73,15 @@ public class PaymentService : IPaymentService
         _context.PaymentTransactions.Add(paymentTransaction);
         await _context.SaveChangesAsync();
 
+        if (isSuccess)
+        {
+            _logger.LogInformation("Payment processed successfully for OrderId: {OrderId}. TransactionId: {TransactionId}", request.OrderId, paymentTransaction.TransactionId);
+        }
+        else
+        {
+            _logger.LogWarning("Payment failed for OrderId: {OrderId}. TransactionId: {TransactionId}", request.OrderId, paymentTransaction.TransactionId);
+        }
+
         return (new PaymentResponse
         {
             TransactionId = paymentTransaction.TransactionId,
@@ -63,12 +92,16 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentResponse?> GetPaymentStatusAsync(Guid transactionId)
     {
+        _logger.LogInformation("GetPaymentStatusAsync called for TransactionId: {TransactionId}", transactionId);
+
         var paymentTransaction = await _context.PaymentTransactions.FirstOrDefaultAsync(p => p.TransactionId == transactionId);
         if (paymentTransaction == null)
         {
+            _logger.LogWarning("Payment transaction not found for TransactionId: {TransactionId}", transactionId);
             return null; // Return null if the transaction is not found
         }
 
+        _logger.LogInformation("Payment status retrieved for TransactionId: {TransactionId}. Status: {Status}", transactionId, paymentTransaction.Status);
         return new PaymentResponse
         {
             TransactionId = paymentTransaction.TransactionId,
