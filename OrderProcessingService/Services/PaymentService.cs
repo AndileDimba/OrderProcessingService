@@ -1,20 +1,23 @@
-﻿using OrderProcessingService.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using OrderProcessingService.Data;
+using OrderProcessingService.DTOs;
 using OrderProcessingService.Models;
 using OrderProcessingService.Repository;
-using Microsoft.EntityFrameworkCore;
-using OrderProcessingService.DTOs;
-using Microsoft.Extensions.Options;
 
 public class PaymentService : IPaymentService
 {
     private readonly OrderProcessingContext _context;
     private readonly PaymentSettings _paymentSettings;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<PaymentService> _logger;
 
-    public PaymentService(OrderProcessingContext context, IOptions<PaymentSettings> paymentSettings, ILogger<PaymentService> logger)
+    public PaymentService(OrderProcessingContext context, IOptions<PaymentSettings> paymentSettings, IMemoryCache cache, ILogger<PaymentService> logger)
     {
         _context = context;
         _paymentSettings = paymentSettings.Value;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -97,6 +100,15 @@ public class PaymentService : IPaymentService
     {
         _logger.LogInformation("GetPaymentStatusAsync called for TransactionId: {TransactionId}", transactionId);
 
+        // Check if the payment status is already cached
+        if (_cache.TryGetValue(transactionId, out PaymentResponse? cachedResponse))
+        {
+            _logger.LogInformation("Cache hit for TransactionId: {TransactionId}", transactionId);
+            return cachedResponse;
+        }
+
+        _logger.LogInformation("Cache miss for TransactionId: {TransactionId}. Querying database...", transactionId);
+
         var paymentTransaction = await _context.PaymentTransactions.FirstOrDefaultAsync(p => p.TransactionId == transactionId);
         if (paymentTransaction == null)
         {
@@ -104,12 +116,16 @@ public class PaymentService : IPaymentService
             return null; // Return null if the transaction is not found
         }
 
-        _logger.LogInformation("Payment status retrieved for TransactionId: {TransactionId}. Status: {Status}", transactionId, paymentTransaction.Status);
-        return new PaymentResponse
+        var response = new PaymentResponse
         {
             TransactionId = paymentTransaction.TransactionId,
             Status = paymentTransaction.Status.ToString(),
             Message = "Payment status retrieved successfully."
         };
+
+        //Cache the result for 10 minutes
+        _cache.Set(transactionId, response, TimeSpan.FromMinutes(10));
+        _logger.LogInformation("Payment status retrieved for TransactionId: {TransactionId}. Status: {Status}", transactionId, paymentTransaction.Status);
+        return response;
     }
 }
