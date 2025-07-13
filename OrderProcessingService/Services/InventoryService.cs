@@ -123,13 +123,18 @@ namespace OrderProcessingService.Services
             item.AvailableQuantity += quantity;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Items released successfully for ProductId: {ProductId} with Quantity: {Quantity}", productId, quantity);
-            return (true, null, new ProductAvailability
+            // Update the cache after releasing inventory
+            var updatedAvailability = new ProductAvailability
             {
                 ProductId = item.ProductId,
                 AvailableQuantity = item.AvailableQuantity,
                 ReservedQuantity = item.ReservedQuantity
-            });
+            };
+            _cache.Set(productId, updatedAvailability, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("Updated cache for ProductId: {ProductId} after releasing items", productId);
+
+            _logger.LogInformation("Items released successfully for ProductId: {ProductId} with Quantity: {Quantity}", productId, quantity);
+            return (true, null, updatedAvailability);
         }
     }
 }
